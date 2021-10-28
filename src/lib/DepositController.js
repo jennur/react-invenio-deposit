@@ -200,8 +200,14 @@ export class DepositController {
     }
 
     for (const file of files) {
-      const uploadFileUrl = draft.links.files;
-      this.fileUploader.upload(uploadFileUrl, file, { store });
+      if(file.external) {
+        console.log("#4 DepositController uploadDraftFiles External file:", file);
+        this.fileUploader.uploadFromUrl(file, { store });
+      }
+      else {
+        const uploadFileUrl = draft.links.files;
+        this.fileUploader.upload(uploadFileUrl, file, { store });
+      }
     }
   }
 

@@ -17,7 +17,7 @@
     ]
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "HTTPS=true SSL_CRT_FILE=../../.localhost-ssl/cert.pem SSL_KEY_FILE=../../.localhost-ssl/key.pem react-scripts start",
     "build": "rimraf dist && NODE_ENV=production rollup -c",
     "edit-linked-package": "json -I -f ./dist/package.json -e 'this.module=\"esm/index.js\", this.main=\"cjs/index.js\"' ",
     "prelink-dist": "cp package.json ./dist && npm run edit-linked-package",
@@ -34,7 +34,9 @@
     "lint": "eslint src/**/*.js",
     "format": "prettier --config ./.prettierrc --ignore-path ./.prettierignore --write \"src/**/*.js\""
   },
-  "dependencies": {},
+  "dependencies": {
+    "oidc-client": "^1.11.5"
+  },
   "peerDependencies": {
     "@ckeditor/ckeditor5-build-classic": "^16.0.0",
     "@ckeditor/ckeditor5-react": "^2.1.0",
@@ -56,6 +58,8 @@
     "react-i18next": "^11.11.3"
   },
   "devDependencies": {
+    "@ownclouders/file-picker": "^0.10.0",
+    "scriptjs": "^2.5.9",
     "@babel/cli": "^7.5.5",
     "@ckeditor/ckeditor5-build-classic": "^16.0.0",
     "@ckeditor/ckeditor5-react": "^2.1.0",

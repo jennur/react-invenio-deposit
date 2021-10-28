@@ -34,6 +34,7 @@ export const FileUploaderComponent = ({
   importButtonIcon,
   importButtonText,
   isFileImportInProgress,
+  cloudIntegrations,
   ...uiProps
 }) => {
   // We extract the working copy of the draft stored as `values` in formik
@@ -63,83 +64,92 @@ export const FileUploaderComponent = ({
     0
   );
 
+  const initFileUpload = (acceptedFiles) => {
+    const maxFileNumberReached =
+    filesList.length + acceptedFiles.length > quota.maxFiles;
+    const acceptedFilesSize = acceptedFiles.reduce(
+      (totalSize, file) => (totalSize += file.size),
+      0
+      );
+    console.log("#3 Files to upload:", acceptedFiles, "\nFileSize:", filesSize, "\nAcceptedSize:", acceptedFilesSize);
+    
+    const maxFileStorageReached =
+      filesSize + acceptedFilesSize > quota.maxStorage;
+
+    const filesNames = _map(filesList, 'name');
+    const duplicateFiles = acceptedFiles.filter((acceptedFile) =>
+      filesNames.includes(acceptedFile.name)
+    );
+
+    if (maxFileNumberReached) {
+      setWarningMsg(
+        <div className="content">
+          <Message
+            warning
+            icon="warning circle"
+            header="Could not upload files."
+            content={`Uploading the selected files would result in ${
+              filesList.length + acceptedFiles.length
+            } files (max.${quota.maxFiles})`}
+          />
+        </div>
+      );
+    } else if (maxFileStorageReached) {
+      setWarningMsg(
+        <div className="content">
+          <Message
+            warning
+            icon="warning circle"
+            header="Could not upload file(s)."
+            content={
+              <>
+                {i18next.t('Uploading the selected files would result in')}{' '}
+                {humanReadableBytes(filesSize + acceptedFilesSize)}
+                {i18next.t('but the limit is')}
+                {humanReadableBytes(quota.maxStorage)}.
+              </>
+            }
+          />
+        </div>
+      );
+    } else if (!_isEmpty(duplicateFiles)) {
+      setWarningMsg(
+        <div className="content">
+          <Message
+            warning
+            icon="warning circle"
+            header={i18next.t(`The following files already exist`)}
+            list={_map(duplicateFiles, 'name')}
+          />
+        </div>
+      );
+    } else {
+      uploadFilesToDraft(formikDraft, acceptedFiles);
+    }
+  }
+
   let dropzoneParams = {
     preventDropOnDocument: true,
-    onDropAccepted: (acceptedFiles) => {
-      const maxFileNumberReached =
-        filesList.length + acceptedFiles.length > quota.maxFiles;
-      const acceptedFilesSize = acceptedFiles.reduce(
-        (totalSize, file) => (totalSize += file.size),
-        0
-      );
-      const maxFileStorageReached =
-        filesSize + acceptedFilesSize > quota.maxStorage;
-
-      const filesNames = _map(filesList, 'name');
-      const duplicateFiles = acceptedFiles.filter((acceptedFile) =>
-        filesNames.includes(acceptedFile.name)
-      );
-
-      if (maxFileNumberReached) {
-        setWarningMsg(
-          <div className="content">
-            <Message
-              warning
-              icon="warning circle"
-              header="Could not upload files."
-              content={`Uploading the selected files would result in ${
-                filesList.length + acceptedFiles.length
-              } files (max.${quota.maxFiles})`}
-            />
-          </div>
-        );
-      } else if (maxFileStorageReached) {
-        setWarningMsg(
-          <div className="content">
-            <Message
-              warning
-              icon="warning circle"
-              header="Could not upload file(s)."
-              content={
-                <>
-                  {i18next.t('Uploading the selected files would result in')}{' '}
-                  {humanReadableBytes(filesSize + acceptedFilesSize)}
-                  {i18next.t('but the limit is')}
-                  {humanReadableBytes(quota.maxStorage)}.
-                </>
-              }
-            />
-          </div>
-        );
-      } else if (!_isEmpty(duplicateFiles)) {
-        setWarningMsg(
-          <div className="content">
-            <Message
-              warning
-              icon="warning circle"
-              header={i18next.t(`The following files already exist`)}
-              list={_map(duplicateFiles, 'name')}
-            />
-          </div>
-        );
-      } else {
-        uploadFilesToDraft(formikDraft, acceptedFiles);
-      }
-    },
+    onDropAccepted: initFileUpload,
     multiple: true,
     noClick: true,
     noKeyboard: true,
     disabled: false,
   };
 
+  let cloudFileParams = {
+    onLoad: initFileUpload,
+    disabled: false
+  };
+
   const filesLeft = filesList.length < quota.maxFiles;
   if (!filesLeft) {
-    dropzoneParams['disabled'] = true;
+    dropzoneParams['disabled'] = cloudFileParams['disabled'] = true;
   }
 
   const displayImportBtn =
     filesEnabled && isDraftRecord && hasParentRecord && !filesList.length;
-
+  console.log("CloudIntegrations:", cloudIntegrations);
   return (
     <>
       <Grid style={{ marginBottom: '20px' }}>
@@ -182,13 +192,16 @@ export const FileUploaderComponent = ({
         )}
         {filesEnabled && (
           <Grid.Row className="file-upload-area-row">
-            <FileUploaderArea
-              {...uiProps}
-              filesList={filesList}
-              dropzoneParams={dropzoneParams}
-              isDraftRecord={isDraftRecord}
-              filesEnabled={filesEnabled}
-            />
+            <Grid.Column width={16}>
+              <FileUploaderArea
+                {...uiProps}
+                filesList={filesList}
+                dropzoneParams={dropzoneParams}
+                isDraftRecord={isDraftRecord}
+                filesEnabled={filesEnabled}
+                cloudIntegrations={{enabled: cloudIntegrations, cloudFileParams}}
+              />
+            </Grid.Column>
           </Grid.Row>
         )}
         {isDraftRecord ? (
@@ -268,6 +281,7 @@ FileUploaderComponent.propTypes = {
   isFileImportInProgress: PropTypes.bool,
   importRecordFilesToDraft: PropTypes.func,
   uploadFilesToDraft: PropTypes.func,
+  cloudIntegrations: PropTypes.array
 };
 
 FileUploaderComponent.defaultProps = {
@@ -282,4 +296,5 @@ FileUploaderComponent.defaultProps = {
   uploadButtonText: i18next.t('Upload files'),
   importButtonIcon: 'sync',
   importButtonText: i18next.t('Import files'),
+  cloudIntegrations: []
 };

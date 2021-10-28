@@ -26,12 +26,14 @@ export default {
       sourcemap: true,
       exports: 'named',
       strict: false,
+      inlineDynamicImports: true
     },
     {
       file: pkg.module,
       format: 'esm',
       exports: 'named',
       sourcemap: true,
+      inlineDynamicImports: true
     },
   ],
   plugins: [

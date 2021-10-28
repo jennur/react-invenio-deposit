@@ -24,6 +24,7 @@ import {
   FILE_UPLOAD_IN_PROGRESS,
   FILE_UPLOAD_SET_CANCEL_FUNCTION,
   FILE_UPLOAD_START,
+  CLOUD_FILE_UPLOAD_IN_PROGRESS
 } from './state/types';
 
 export class DepositFileUploader {
@@ -148,7 +149,70 @@ export class DepositFileUploader {
     }
   };
 
+  uploadFromUrl = async (file, { store }) => {
+    console.log('#5 Uploading external file')
+
+    try {
+      // store.dispatch({
+      //   type: CLOUD_FILE_UPLOAD_IN_PROGRESS,
+      //   payload: { 
+      //     filename: file.name,
+      //     size: file.size,
+      //   },
+      // });
+
+      const resp = await this.apiClient.getFileFromURL(file, 
+        (e) => {
+          store.dispatch({
+            type: CLOUD_FILE_UPLOAD_IN_PROGRESS,
+            payload: {
+              filename: file.name,
+              size: file.size,
+              percent: Math.floor((e.loaded / e.total) * 100),
+            },
+          });
+        },
+        (c) => {
+          // A cancel function for aborting the upload request
+          store.dispatch({
+            type: FILE_UPLOAD_SET_CANCEL_FUNCTION,
+            payload: { filename: file.name, cancel: c },
+          });
+        });
+      console.log("uploadFromUrl: resp:", resp);
+      store.dispatch({
+        type: FILE_UPLOAD_FINISHED,
+        payload: {
+          filename: resp.data.key,
+          size: resp.data.size,
+          checksum: resp.data.checksum,
+          links: resp.data.links,
+        },
+      });
+    } catch (e) {
+      console.log("Error uploading file from external source", e);
+        
+        const isUploadCancelledOrFailed = [
+          FILE_UPLOAD_CANCELLED,
+          FILE_UPLOAD_FAILED,
+        ].some((msg) => e.message === msg);
+
+        if (isUploadCancelledOrFailed) {
+          // TODO: Should we delete the file automatically?
+          console.log("\n\nDeleting file");
+          store.dispatch({
+            type: e.message,
+            payload: {
+              filename: file.name,
+            },
+          });
+        }
+      }
+  }
+
   upload = async (initializeUploadUrl, file, { store }) => {
+    console.log("DepositFileUploader upload() File", file);
+
     if (this.currentUploads.length < this.maxConcurrentUploads) {
       let initializedFileMetadata = await this.initializeUpload(
         initializeUploadUrl,
@@ -168,10 +232,12 @@ export class DepositFileUploader {
         this.finalizeUpload(finalizeFileUrl, file, { store });
       } catch (e) {
         // TODO: should handle `FILE_UPLOAD_FAILED` from intermediate requests
+        
         const isUploadCancelledOrFailed = [
           FILE_UPLOAD_CANCELLED,
           FILE_UPLOAD_FAILED,
         ].some((msg) => e.message === msg);
+
         if (isUploadCancelledOrFailed) {
           // TODO: Should we delete the file automatically?
           await this.deleteUpload(deleteFileUrl, file, {

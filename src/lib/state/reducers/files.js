@@ -18,6 +18,7 @@ import {
   FILE_IMPORT_STARTED,
   FILE_IMPORT_SUCCESS,
   FILE_IMPORT_FAILED,
+  CLOUD_FILE_UPLOAD_IN_PROGRESS
 } from '../types';
 
 export const UploadState = {
@@ -32,7 +33,25 @@ const initialState = {};
 
 export default (state = initialState, action) => {
   let newState;
+  console.log("Previous state:", state);
+
   switch (action.type) {
+    case CLOUD_FILE_UPLOAD_IN_PROGRESS:
+      return {
+        ...state,
+        entries: {
+          ...state.entries,
+          [action.payload.filename]: {
+            progress: 0,
+            name: action.payload.filename,
+            size: action.payload.size,
+            status: UploadState.uploading,
+            // checksum: null,
+            // links: null,
+            // cancel: null,
+          },
+        },
+      };
     case FILE_UPLOAD_INITIATE:
       return {
         ...state,

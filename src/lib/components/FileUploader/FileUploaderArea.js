@@ -20,9 +20,10 @@ import {
   Table,
   Popup,
   Checkbox,
+  Dropdown
 } from 'semantic-ui-react';
+import OwnCloudModal from './OwnCloud/OwnCloudModal';
 import { i18next } from '@translations/i18next';
-
 import { humanReadableBytes } from './utils';
 
 const FileTableHeader = ({ isDraftRecord }) => (
@@ -153,6 +154,84 @@ const FileTableRow = ({
   );
 };
 
+export class SelectUpload extends Component {
+  constructor(props){
+    super(props);
+    this.state = {
+      open: this.setCloudOpenStates()
+    }
+  }
+
+  setCloudOpenStates = () => {
+    let cloudIntegrations = this.props.cloudIntegrations.enabled;
+    let openStates = {};
+    cloudIntegrations.forEach(integration => {
+      openStates[integration] = false;
+    })
+    return openStates;
+  }
+
+  closeModal = (item) => {
+    let open = this.state.open;
+    open[item] = false;
+    this.setState({open})
+  }
+
+  openCloudModal = (event, item) => {
+    console.log("Selected:", event, item);
+
+    let open = this.state.open;
+    open[item.value] = true;
+    this.setState({open});
+  }
+
+  getOptionText(option){
+    switch(option) {
+      case 'cernbox':
+        return 'CERNBox';
+      default:
+        return 'Undefined';
+    }
+  }
+  getCloudOptions = () => {
+    let cloudIntegrations = this.props.cloudIntegrations.enabled;
+
+    return cloudIntegrations
+            .map(option => {
+              return {
+                key: option,
+                text: this.getOptionText(option),
+                value: option,
+                onClick: this.openCloudModal
+              }
+            })
+  }
+
+  render() {
+    let cloudFileParams = this.props.cloudIntegrations.cloudFileParams;
+    let cloudOptions = this.getCloudOptions();
+    return(
+    <>
+      <Dropdown placeholder='Upload files from...' 
+                selection 
+                options={[
+                  { 
+                    key: 'local', 
+                    value: 'local', 
+                    text: 'My computer', 
+                    onClick: this.props.openFileDialog
+                  },
+                  ...cloudOptions
+                ]}
+      />
+      <OwnCloudModal open={this.state.open['cernbox']} 
+                    close={() => this.closeModal('cernbox')} 
+                    {...cloudFileParams}
+      />
+    </>);
+  }
+}
+
 const FileUploadBox = ({
   isDraftRecord,
   filesList,
@@ -160,8 +239,14 @@ const FileUploadBox = ({
   uploadButtonIcon,
   uploadButtonText,
   openFileDialog,
-}) =>
-  isDraftRecord && (
+  cloudIntegrations
+}) => {
+
+  let cloudEnabled = cloudIntegrations.enabled && cloudIntegrations.enabled.length;
+  console.log("CloudEnabled:", cloudEnabled);
+
+  return isDraftRecord && (
+    <div>
     <Segment
       basic
       padded="very"
@@ -174,21 +259,30 @@ const FileUploadBox = ({
           <Grid.Column width="7">
             <Header size="small">{dragText}</Header>
           </Grid.Column>
-          <Grid.Column width="2">- {i18next.t('or')} -</Grid.Column>
+          <Grid.Column width="2">
+            - {i18next.t('or')} -
+          </Grid.Column>
           <Grid.Column width="7">
-            <Button
-              type="button"
-              primary={true}
-              icon={uploadButtonIcon}
-              content={uploadButtonText}
-              onClick={() => openFileDialog()}
-              disabled={openFileDialog === null}
-            />
+            {cloudEnabled ?
+              <SelectUpload cloudIntegrations={cloudIntegrations}
+                            openFileDialog={openFileDialog}
+              /> 
+              : 
+              <Button
+                type="button"
+                primary={true}
+                icon={uploadButtonIcon}
+                content={uploadButtonText}
+                onClick={() => openFileDialog()}
+                disabled={openFileDialog === null}
+              />
+            }
           </Grid.Column>
         </Grid.Row>
       </Grid>
     </Segment>
-  );
+  </div>
+  )};
 
 const FilesListTable = ({ isDraftRecord, filesList, deleteFileFromRecord }) => {
   const { setFieldValue, values: formikDraft } = useFormikContext();
@@ -217,24 +311,47 @@ const FilesListTable = ({ isDraftRecord, filesList, deleteFileFromRecord }) => {
 };
 
 export class FileUploaderArea extends Component {
+
   render() {
-    const { filesEnabled, dropzoneParams, filesList } = this.props;
+    const { filesEnabled, cloudIntegrations, dropzoneParams, cloudFileParams,
+            filesList, isDraftRecord} = this.props;
+
     return filesEnabled ? (
-      <Dropzone {...dropzoneParams}>
-        {({ getRootProps, getInputProps, open: openFileDialog }) => (
-          <Grid.Column width={16}>
-            <span {...getRootProps()}>
-              <input {...getInputProps()} />
-              {filesList.length !== 0 && (
-                <Grid.Column verticalAlign="middle">
-                  <FilesListTable {...this.props} />
-                </Grid.Column>
-              )}
-              <FileUploadBox {...this.props} openFileDialog={openFileDialog} />
-            </span>
-          </Grid.Column>
+      <Grid>
+        {filesList.length !== 0 && (
+          <Grid.Row>
+            <Grid.Column verticalAlign="middle">
+              <FilesListTable {...this.props} />
+            </Grid.Column>
+          </Grid.Row>
         )}
-      </Dropzone>
+        <Grid.Row>
+          <Grid.Column width={16}>
+            <Dropzone {...dropzoneParams}>
+              {({ getRootProps, getInputProps, open: openFileDialog }) => (
+                
+                  <span {...getRootProps()}>
+                    <input {...getInputProps()} />
+                    <FileUploadBox {...this.props} 
+                      openFileDialog={openFileDialog}
+                      cloudIntegrations={cloudIntegrations}
+                      cloudFileParams={cloudFileParams} 
+                    />
+                  </span>
+                
+              )}
+            </Dropzone>
+          </Grid.Column>
+          {/* {isDraftRecord && cloudEnabled &&
+            <Grid.Column width={6}>
+                  <Header size="small">Upload files from</Header>
+                  { cloudIntegrations.cernBox &&
+                  <OwnCloudModal {...cernBoxParams} />
+                  }
+            </Grid.Column>
+          } */}
+        </Grid.Row>
+      </Grid>
     ) : (
       <Grid.Column width={16}>
         <Segment basic padded="very" className="file-upload-area no-files">
@@ -258,6 +375,7 @@ FileUploaderArea.propTypes = {
   deleteFileFromRecord: PropTypes.func,
   dragText: PropTypes.string,
   dropzoneParams: PropTypes.object,
+  cernBoxParams: PropTypes.object,
   filesEnabled: PropTypes.bool,
   filesList: PropTypes.array,
   isDraftRecord: PropTypes.bool,
@@ -265,4 +383,5 @@ FileUploaderArea.propTypes = {
   setDefaultPreviewFile: PropTypes.func,
   uploadButtonIcon: PropTypes.string,
   uploadButtonText: PropTypes.string,
+  cloudIntegrations: PropTypes.object
 };

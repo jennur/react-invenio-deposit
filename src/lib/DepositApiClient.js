@@ -139,6 +139,32 @@ export class DepositApiClient {
     });
   }
 
+  getFileFromURL(file, onUploadProgress, cancel) {
+    console.log("#6 DepositApiClient Uploading to backend:", file.url);
+    // todo: send fileurl to backend
+    return axiosWithconfig.post('/file-upload-from-url', file, {
+      headers: {
+        'content-type': 'application/json',
+      },
+      onUploadProgress,
+      cancelToken: new CancelToken(cancel), //todo: this is not working
+    });
+
+    // Mockup
+    // return new Promise(function(resolve, reject) {
+    //   setTimeout(function() {
+    //     resolve({
+    //       data: {
+    //         key: file.name,
+    //         size: file.size, 
+    //         checksum: '472835255',
+    //         links: file.links
+    //       }
+    //     });
+    //   }, 2000);
+    // });
+  }
+
   uploadFile(uploadUrl, file, onUploadProgress, cancel) {
     const formData = new FormData();
     formData.append('file', file);
