@@ -6,10 +6,14 @@
 // under the terms of the MIT License; see LICENSE file for more details.
 
 import React, { Component } from 'react';
+import FilePicker from '../lib/components/FileUploader/FilePicker'
 
 class App extends Component {
   render() {
-    return <p>Coming soon</p>;
+    return <div>
+        <p>Coming soon</p>
+        <FilePicker></FilePicker>
+      </div>;
   }
 }
 

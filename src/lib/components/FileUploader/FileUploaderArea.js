@@ -22,7 +22,7 @@ import {
   Checkbox,
 } from 'semantic-ui-react';
 import { i18next } from '@translations/i18next';
-
+import FilePicker from './FilePicker';
 import { humanReadableBytes } from './utils';
 
 const FileTableHeader = ({ isDraftRecord }) => (
@@ -174,7 +174,9 @@ const FileUploadBox = ({
           <Grid.Column width="7">
             <Header size="small">{dragText}</Header>
           </Grid.Column>
-          <Grid.Column width="2">- {i18next.t('or')} -</Grid.Column>
+          <Grid.Column width="2">
+            <FilePicker/>
+          </Grid.Column>
           <Grid.Column width="7">
             <Button
               type="button"
